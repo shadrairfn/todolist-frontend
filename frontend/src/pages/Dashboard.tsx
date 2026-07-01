@@ -1,190 +1,176 @@
-import React from 'react';
-import { 
-  PlusCircle, 
-  Search, 
-  Inbox, 
-  Calendar, 
-  CalendarDays, 
-  SlidersHorizontal,
-  Bell,
-  PanelLeftClose,
-  Hash,
-  CheckCircle2,
-  Circle,
-  Plus
-} from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Sidebar from '../components/Sidebar/Sidebar';
+import TaskList, { type Todo } from '../components/TaskList/TaskList';
+import AddTask from '../components/AddTask/AddTask';
+import AgenticAiSlider from '../components/AgenticAiSlider/AgenticAiSlider';
+import { fetchWithAuth } from '../utils/api';
 import './Dashboard.css';
 
 const Dashboard: React.FC = () => {
-    const []
+  const navigate = useNavigate();
+  const [todos, setTodos] = useState<Todo[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentView, setCurrentView] = useState<'today' | 'upcoming'>('today');
+  
+  // Add task states
+  const [isAddingTask, setIsAddingTask] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskDescription, setNewTaskDescription] = useState('');
+  const [newTaskDeadline, setNewTaskDeadline] = useState('');
+  const [newTaskRecurrence, setNewTaskRecurrence] = useState('none');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const fetchTodos = useCallback(async () => {
+    try {
+      const response = await fetchWithAuth('http://127.0.0.1:8000/todos/');
+
+      if (response.ok) {
+        const data = await response.json();
+        setTodos(data);
+      }
+    } catch (error) {
+      console.error("Error fetching todos:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [navigate]);
+
+  useEffect(() => {
+    fetchTodos();
+  }, [fetchTodos]);
+
+  const handleAddTask = async () => {
+    if (!newTaskTitle.trim()) return;
+    
+    setIsSubmitting(true);
+
+    const payload: any = {
+      title: newTaskTitle,
+      description: newTaskDescription || null,
+      deadline: newTaskDeadline ? new Date(newTaskDeadline).toISOString() : null,
+      is_daily: newTaskRecurrence === 'daily',
+      is_weekly: newTaskRecurrence === 'weekly',
+      is_monthly: newTaskRecurrence === 'monthly',
+      is_yearly: newTaskRecurrence === 'yearly'
+    };
+
+    try {
+      const response = await fetchWithAuth('http://127.0.0.1:8000/todos/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        const newTodo = await response.json();
+        setTodos(prev => [...prev, newTodo]);
+        // Reset form
+        setNewTaskTitle('');
+        setNewTaskDescription('');
+        setNewTaskDeadline('');
+        setNewTaskRecurrence('none');
+        setIsAddingTask(false);
+      } else {
+        console.error("Failed to add task");
+      }
+    } catch (error) {
+      console.error("Error adding task:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteTodo = async (id: string) => {
+    try {
+      const response = await fetchWithAuth(`http://127.0.0.1:8000/todos/${id}`, {
+        method: 'DELETE'
+      });
+      if (response.ok) {
+        setTodos(prev => prev.filter(todo => todo.id !== id));
+      } else {
+        console.error("Failed to delete task");
+      }
+    } catch (error) {
+      console.error("Error deleting task:", error);
+    }
+  };
+
+  const handleUpdateTodo = async (id: string, updates: Partial<Todo>) => {
+    try {
+      const response = await fetchWithAuth(`http://127.0.0.1:8000/todos/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      if (response.ok) {
+        const updatedTodo = await response.json();
+        setTodos(prev => prev.map(todo => (todo.id === id ? updatedTodo : todo)));
+      } else {
+        console.error("Failed to update task");
+      }
+    } catch (error) {
+      console.error("Error updating task:", error);
+    }
+  };
+
+  const handleSearch = async (query: string) => {
+    if (!query.trim()) {
+      fetchTodos();
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const response = await fetchWithAuth(`http://127.0.0.1:8000/todos/search?q=${encodeURIComponent(query)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setTodos(data);
+      }
+    } catch (error) {
+      console.error("Error searching todos:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="dashboard-container">
-      {/* Sidebar */}
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <div className="user-profile">
-            <img 
-              src="https://api.dicebear.com/7.x/avataaars/svg?seed=Denise" 
-              alt="User" 
-              className="user-avatar"
-            />
-            <span className="user-name">Denise</span>
-            <span className="chevron-down">v</span>
-          </div>
-          <div className="header-actions">
-            <Bell size={18} className="action-icon" />
-            <PanelLeftClose size={18} className="action-icon" />
-          </div>
-        </div>
+      <Sidebar currentView={currentView} setCurrentView={setCurrentView} onSearch={handleSearch} />
 
-        <nav className="sidebar-nav">
-          <div className="nav-item add-task-btn">
-            <PlusCircle size={20} className="nav-icon text-red" />
-            <span>Add task</span>
-          </div>
-          <div className="nav-item">
-            <Search size={20} className="nav-icon" />
-            <span>Search</span>
-          </div>
-          <div className="nav-item">
-            <Inbox size={20} className="nav-icon" />
-            <span>Inbox</span>
-          </div>
-          <div className="nav-item active">
-            <Calendar size={20} className="nav-icon text-orange" />
-            <span>Today</span>
-          </div>
-          <div className="nav-item">
-            <CalendarDays size={20} className="nav-icon" />
-            <span>Upcoming</span>
-          </div>
-          <div className="nav-item">
-            <SlidersHorizontal size={20} className="nav-icon" />
-            <span>Filters & Labels</span>
-          </div>
-        </nav>
-
-        <div className="sidebar-section">
-          <div className="section-header">
-            <span>My Projects</span>
-          </div>
-          <div className="nav-item">
-            <Hash size={18} className="nav-icon text-orange" />
-            <span>Fitness</span>
-          </div>
-          <div className="nav-item">
-            <Hash size={18} className="nav-icon text-yellow" />
-            <span>Groceries</span>
-          </div>
-          <div className="nav-item">
-            <Hash size={18} className="nav-icon text-blue" />
-            <span>Appointments</span>
-          </div>
-        </div>
-
-        <div className="sidebar-section">
-          <div className="section-header">
-            <span>Team</span>
-          </div>
-          <div className="nav-item">
-            <Hash size={18} className="nav-icon text-orange" />
-            <span>New Brand</span>
-          </div>
-          <div className="nav-item">
-            <Hash size={18} className="nav-icon text-purple" />
-            <span>Website Update</span>
-          </div>
-          <div className="nav-item">
-            <Hash size={18} className="nav-icon text-green" />
-            <span>Product Roadmap</span>
-          </div>
-          <div className="nav-item">
-            <Hash size={18} className="nav-icon text-pink" />
-            <span>Meeting Agenda</span>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Content */}
       <main className="main-content">
         <header className="content-header">
-          <h1>Today</h1>
+          <h1>{currentView === 'today' ? 'Today' : 'Upcoming'}</h1>
         </header>
 
         <div className="task-section">
           <h2>My Projects</h2>
-          
-          <div className="task-list">
-            <div className="task-item">
-              <Circle size={20} className="task-checkbox" />
-              <div className="task-details">
-                <span className="task-title">Do 30 minutes of yoga 🧘‍♀️</span>
-                <span className="task-time text-green">
-                  <Calendar size={14} /> 7:30 AM ⏰
-                </span>
-              </div>
-            </div>
-            
-            <div className="task-item">
-              <Circle size={20} className="task-checkbox" />
-              <div className="task-details">
-                <span className="task-title">Dentist appointment</span>
-                <span className="task-time text-green">
-                  <Calendar size={14} /> 10:00 AM 🦷
-                </span>
-              </div>
-            </div>
-
-            <div className="task-item">
-              <Circle size={20} className="task-checkbox" />
-              <div className="task-details">
-                <span className="task-title">Buy bread 🍞</span>
-              </div>
-            </div>
-          </div>
-          
-          <button className="add-task-inline">
-            <Plus size={16} /> Add task
-          </button>
-        </div>
-
-        <div className="task-section">
-          <h2>Team</h2>
-          
-          <div className="task-list">
-            <div className="task-item">
-              <Circle size={20} className="task-checkbox border-blue text-blue" />
-              <div className="task-details">
-                <span className="task-title">Plan user research sessions</span>
-                <span className="task-time text-green">
-                  <Calendar size={14} /> 2:00 PM <span className="calendar-tag">Calendar</span>
-                </span>
-              </div>
-            </div>
-            
-            <div className="task-item">
-              <Circle size={20} className="task-checkbox border-red text-red" />
-              <div className="task-details">
-                <span className="task-title">Provide feedback on Amy's design</span>
-              </div>
-            </div>
-
-            <div className="task-item">
-              <Circle size={20} className="task-checkbox border-green text-green" />
-              <div className="task-details">
-                <span className="task-title">All-hands meeting</span>
-                <span className="task-time text-green">
-                  <Calendar size={14} />
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <button className="add-task-inline">
-            <Plus size={16} /> Add task
-          </button>
+          <TaskList 
+            todos={todos} 
+            isLoading={isLoading} 
+            currentView={currentView} 
+            onDelete={handleDeleteTodo}
+            onUpdate={handleUpdateTodo}
+          />
+          <AddTask 
+            isAddingTask={isAddingTask}
+            setIsAddingTask={setIsAddingTask}
+            newTaskTitle={newTaskTitle}
+            setNewTaskTitle={setNewTaskTitle}
+            newTaskDescription={newTaskDescription}
+            setNewTaskDescription={setNewTaskDescription}
+            newTaskDeadline={newTaskDeadline}
+            setNewTaskDeadline={setNewTaskDeadline}
+            newTaskRecurrence={newTaskRecurrence}
+            setNewTaskRecurrence={setNewTaskRecurrence}
+            isSubmitting={isSubmitting}
+            handleAddTask={handleAddTask}
+          />
         </div>
       </main>
+
+      <AgenticAiSlider onActionConfirmed={fetchTodos} />
     </div>
   );
 };

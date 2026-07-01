@@ -1,0 +1,130 @@
+.add-task-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+  padding: 10px 0;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: color 0.2s;
+}
+
+.add-task-inline:hover {
+  color: var(--c-red);
+}
+
+.add-task-inline:hover svg {
+  color: var(--c-red);
+}
+
+.add-task-form {
+  margin-top: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.add-task-form input.task-title-input {
+  border: none;
+  outline: none;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--text-primary);
+  width: 100%;
+  background: transparent;
+}
+
+.add-task-form textarea.task-desc-input {
+  border: none;
+  outline: none;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-primary);
+  width: 100%;
+  resize: vertical;
+  background: transparent;
+}
+
+.add-task-form input::placeholder,
+.add-task-form textarea::placeholder {
+  color: var(--text-secondary);
+}
+
+.task-form-options {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.form-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.form-group input[type="datetime-local"],
+.form-group select {
+  padding: 4px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-primary);
+  background-color: var(--bg-color);
+  outline: none;
+}
+
+.form-group input[type="datetime-local"]:focus,
+.form-group select:focus {
+  border-color: var(--c-red);
+}
+
+.add-task-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.add-task-actions button {
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.btn-cancel {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.btn-cancel:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.btn-submit {
+  background: var(--c-red);
+  color: white;
+}
+
+.btn-submit:hover:not(:disabled) {
+  background: #c53727;
+}
+
+.btn-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

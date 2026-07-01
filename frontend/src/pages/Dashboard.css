@@ -1,13 +1,13 @@
 :root {
   --sidebar-width: 280px;
-  --sidebar-bg: #faf8f7;
-  --bg-color: #ffffff;
-  --text-primary: #202020;
-  --text-secondary: #808080;
-  --border-color: #f0f0f0;
-  --hover-bg: #f3f3f3;
-  --active-bg: #ffefe5;
-  --active-text: #d1453b;
+  --sidebar-bg: #1e1e1e;
+  --bg-color: #121212;
+  --text-primary: #f5f5f5;
+  --text-secondary: #a3a3a3;
+  --border-color: #333333;
+  --hover-bg: #2c2c2c;
+  --active-bg: #3a2523;
+  --active-text: #ff7262;
   
   /* Icon colors */
   --c-red: #db4c3f;
@@ -30,123 +30,6 @@ body {
   width: 100vw;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-}
-
-/* Sidebar Styles */
-.sidebar {
-  width: var(--sidebar-width);
-  background-color: var(--sidebar-bg);
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  padding: 12px 16px;
-  overflow-y: auto;
-  border-right: 1px solid var(--border-color);
-}
-
-.sidebar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 8px 24px 8px;
-}
-
-.user-profile {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.user-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background-color: #e5e5e5;
-}
-
-.chevron-down {
-  color: var(--text-secondary);
-  font-size: 12px;
-  margin-left: 2px;
-}
-
-.header-actions {
-  display: flex;
-  gap: 12px;
-  color: var(--text-secondary);
-}
-
-.action-icon {
-  cursor: pointer;
-  transition: color 0.2s;
-}
-
-.action-icon:hover {
-  color: var(--text-primary);
-}
-
-/* Navigation Styles */
-.sidebar-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 24px;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  color: var(--text-primary);
-  transition: background-color 0.2s;
-}
-
-.nav-item:hover {
-  background-color: var(--hover-bg);
-}
-
-.nav-item.active {
-  background-color: var(--active-bg);
-  color: var(--active-text);
-}
-
-.nav-icon {
-  color: var(--text-secondary);
-}
-
-.nav-item.active .nav-icon {
-  color: var(--active-text);
-}
-
-.add-task-btn {
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
-.add-task-btn .nav-icon {
-  color: var(--c-red);
-}
-
-/* Sections Styles */
-.sidebar-section {
-  margin-bottom: 24px;
-}
-
-.section-header {
-  padding: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 /* Main Content Styles */
@@ -177,79 +60,6 @@ body {
   border-bottom: 1px solid var(--border-color);
 }
 
-.task-list {
-  display: flex;
-  flex-direction: column;
-}
-
-.task-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border-color);
-  cursor: pointer;
-}
-
-.task-item:last-child {
-  border-bottom: none;
-}
-
-.task-checkbox {
-  color: var(--text-secondary);
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.task-checkbox:hover {
-  color: var(--text-primary);
-}
-
-.task-details {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.task-title {
-  font-size: 14px;
-  color: var(--text-primary);
-}
-
-.task-time {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-}
-
-.calendar-tag {
-  color: var(--text-secondary);
-  margin-left: 4px;
-}
-
-.add-task-inline {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 14px;
-  padding: 10px 0;
-  cursor: pointer;
-  margin-top: 8px;
-  transition: color 0.2s;
-}
-
-.add-task-inline:hover {
-  color: var(--c-red);
-}
-
-.add-task-inline:hover svg {
-  color: var(--c-red);
-}
-
 /* Color Utilities */
 .text-red { color: var(--c-red); }
 .text-orange { color: var(--c-orange); }
@@ -258,8 +68,3 @@ body {
 .text-purple { color: var(--c-purple); }
 .text-green { color: var(--c-green); }
 .text-pink { color: var(--c-pink); }
-
-/* SVG Icon Checkbox Styling for the Team list */
-.border-blue { color: var(--c-blue); }
-.border-red { color: var(--c-red); }
-.border-green { color: var(--c-green); }
