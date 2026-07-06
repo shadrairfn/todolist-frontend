@@ -1,20 +1,54 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles, X, Send, List, Plus, Trash2, MessageSquare, Edit2, Check } from 'lucide-react';
-import { fetchWithAuth } from '../../utils/api';
+import { apiUrl, fetchWithAuth } from '../../utils/api';
 import './AgenticAiSlider.css';
 
 interface AgenticAiSliderProps {
   onActionConfirmed: () => void;
 }
 
+interface AgentSession {
+  id: string;
+  title?: string | null;
+}
+
+interface PendingAction {
+  id: string;
+  type: string;
+  preview?: {
+    message?: string;
+  };
+}
+
+interface ChatMessage {
+  id: string | number;
+  role: 'ai' | 'user' | string;
+  content: string;
+  pendingAction?: PendingAction | null;
+}
+
+interface ChatHistoryItem {
+  id: string | number;
+  role: string;
+  content: string;
+}
+
+interface AgentReply {
+  reply: string;
+  requires_confirmation?: boolean;
+  pending_action_id?: string;
+  action_type?: string;
+  preview?: PendingAction['preview'];
+}
+
 const AgenticAiSlider: React.FC<AgenticAiSliderProps> = ({ onActionConfirmed }) => {
   const [isAiSliderOpen, setIsAiSliderOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'chat' | 'sessions'>('chat');
-  const [sessions, setSessions] = useState<any[]>([]);
+  const [sessions, setSessions] = useState<AgentSession[]>([]);
   const [agentSessionId, setAgentSessionId] = useState<string | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [isAiTyping, setIsAiTyping] = useState(false);
-  const [chatMessages, setChatMessages] = useState<any[]>([
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     { id: 1, role: 'ai', content: 'Hello! I am your Agentic AI assistant. How can I help you manage your tasks today?' }
   ]);
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
@@ -23,19 +57,19 @@ const AgenticAiSlider: React.FC<AgenticAiSliderProps> = ({ onActionConfirmed }) 
 
   const initializeAiSession = async () => {
     try {
-      const sessionRes = await fetchWithAuth('http://127.0.0.1:8000/agentic/sessions');
+      const sessionRes = await fetchWithAuth(apiUrl('/agentic/sessions'));
       if (sessionRes.ok) {
-        const sessionsData = await sessionRes.json();
+        const sessionsData = await sessionRes.json() as AgentSession[];
         setSessions(sessionsData || []);
         if (sessionsData && sessionsData.length > 0) {
           const latestSession = sessionsData[sessionsData.length - 1];
           setAgentSessionId(latestSession.id);
           
-          const chatRes = await fetchWithAuth(`http://127.0.0.1:8000/agentic/session/${latestSession.id}/chat`);
+          const chatRes = await fetchWithAuth(apiUrl(`/agentic/session/${latestSession.id}/chat`));
           if (chatRes.ok) {
-             const history = await chatRes.json();
+             const history = await chatRes.json() as ChatHistoryItem[];
              if (history && history.length > 0) {
-               const formattedMessages = history.map((msg: any) => ({
+               const formattedMessages = history.map((msg) => ({
                   id: msg.id,
                   role: msg.role === 'agent' ? 'ai' : msg.role,
                   content: msg.content
@@ -47,7 +81,7 @@ const AgenticAiSlider: React.FC<AgenticAiSliderProps> = ({ onActionConfirmed }) 
         }
       }
 
-      const response = await fetchWithAuth('http://127.0.0.1:8000/agentic/sessions', {
+      const response = await fetchWithAuth(apiUrl('/agentic/sessions'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -55,7 +89,7 @@ const AgenticAiSlider: React.FC<AgenticAiSliderProps> = ({ onActionConfirmed }) 
         body: JSON.stringify({ title: "New Chat Session" })
       });
       if (response.ok) {
-        const data = await response.json();
+        const data = await response.json() as AgentSession;
         setSessions([data]);
         setAgentSessionId(data.id);
       }
@@ -67,11 +101,11 @@ const AgenticAiSlider: React.FC<AgenticAiSliderProps> = ({ onActionConfirmed }) 
   const loadSessionChat = async (id: string) => {
     try {
       setChatMessages([]);
-      const chatRes = await fetchWithAuth(`http://127.0.0.1:8000/agentic/session/${id}/chat`);
+      const chatRes = await fetchWithAuth(apiUrl(`/agentic/session/${id}/chat`));
       if (chatRes.ok) {
-        const history = await chatRes.json();
+        const history = await chatRes.json() as ChatHistoryItem[];
         if (history && history.length > 0) {
-          const formattedMessages = history.map((msg: any) => ({
+          const formattedMessages = history.map((msg) => ({
             id: msg.id,
             role: msg.role === 'agent' ? 'ai' : msg.role,
             content: msg.content
@@ -95,7 +129,7 @@ const AgenticAiSlider: React.FC<AgenticAiSliderProps> = ({ onActionConfirmed }) 
   const handleDeleteSession = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     try {
-      const response = await fetchWithAuth(`http://127.0.0.1:8000/agentic/sessions/${id}`, {
+      const response = await fetchWithAuth(apiUrl(`/agentic/sessions/${id}`), {
         method: 'DELETE'
       });
       if (response.ok) {
@@ -112,13 +146,13 @@ const AgenticAiSlider: React.FC<AgenticAiSliderProps> = ({ onActionConfirmed }) 
 
   const handleCreateSession = async () => {
     try {
-      const response = await fetchWithAuth('http://127.0.0.1:8000/agentic/sessions', {
+      const response = await fetchWithAuth(apiUrl('/agentic/sessions'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: `Chat Session ${sessions.length + 1}` })
       });
       if (response.ok) {
-        const newSession = await response.json();
+        const newSession = await response.json() as AgentSession;
         setSessions(prev => [...prev, newSession]);
         handleSwitchSession(newSession.id);
       }
@@ -127,7 +161,7 @@ const AgenticAiSlider: React.FC<AgenticAiSliderProps> = ({ onActionConfirmed }) 
     }
   };
 
-  const handleRenameSessionStart = (e: React.MouseEvent, session: any) => {
+  const handleRenameSessionStart = (e: React.MouseEvent, session: AgentSession) => {
     e.stopPropagation();
     setEditingSessionId(session.id);
     setEditSessionTitle(session.title || 'Chat Session');
@@ -144,7 +178,7 @@ const AgenticAiSlider: React.FC<AgenticAiSliderProps> = ({ onActionConfirmed }) 
     }
     
     try {
-      const response = await fetchWithAuth(`http://127.0.0.1:8000/agentic/sessions/${id}`, {
+      const response = await fetchWithAuth(apiUrl(`/agentic/sessions/${id}`), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: editSessionTitle })
@@ -162,7 +196,7 @@ const AgenticAiSlider: React.FC<AgenticAiSliderProps> = ({ onActionConfirmed }) 
 
   useEffect(() => {
     if (isAiSliderOpen && !agentSessionId) {
-      initializeAiSession();
+      Promise.resolve().then(initializeAiSession);
     }
   }, [isAiSliderOpen, agentSessionId]);
 
@@ -177,7 +211,7 @@ const AgenticAiSlider: React.FC<AgenticAiSliderProps> = ({ onActionConfirmed }) 
     setIsAiTyping(true);
     
     try {
-      const response = await fetchWithAuth(`http://127.0.0.1:8000/agentic/sessions/${agentSessionId}/chat`, {
+      const response = await fetchWithAuth(apiUrl(`/agentic/sessions/${agentSessionId}/chat`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -186,16 +220,16 @@ const AgenticAiSlider: React.FC<AgenticAiSliderProps> = ({ onActionConfirmed }) 
       });
 
       if (response.ok) {
-        const data = await response.json();
-        const aiMessage: any = {
+        const data = await response.json() as AgentReply;
+        const aiMessage: ChatMessage = {
           id: Date.now(),
           role: 'ai',
           content: data.reply
         };
         if (data.requires_confirmation) {
           aiMessage.pendingAction = {
-            id: data.pending_action_id,
-            type: data.action_type,
+            id: data.pending_action_id || '',
+            type: data.action_type || 'confirm',
             preview: data.preview
           };
         }
@@ -230,7 +264,7 @@ const AgenticAiSlider: React.FC<AgenticAiSliderProps> = ({ onActionConfirmed }) 
     }));
 
     try {
-      const response = await fetchWithAuth(`http://127.0.0.1:8000/agentic/pending-actions/${actionId}/${actionType}`, {
+      const response = await fetchWithAuth(apiUrl(`/agentic/pending-actions/${actionId}/${actionType}`), {
         method: 'POST'
       });
       if (response.ok) {
@@ -363,25 +397,27 @@ const AgenticAiSlider: React.FC<AgenticAiSliderProps> = ({ onActionConfirmed }) 
         ) : (
           <>
             <div className="ai-chat-body">
-          {chatMessages.map(msg => (
+          {chatMessages.map(msg => {
+            const pendingAction = msg.pendingAction;
+            return (
             <div key={msg.id} className={`chat-message ${msg.role}`}>
               <div className="chat-bubble">
                 <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
-                {msg.pendingAction && (
+                {pendingAction && (
                   <div style={{ marginTop: '10px', padding: '10px', background: 'rgba(0,0,0,0.1)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
                     <div style={{ fontSize: '13px', marginBottom: '10px' }}>
                       <strong>Confirmation Needed:</strong><br/>
-                      {msg.pendingAction.preview?.message}
+                      {pendingAction.preview?.message}
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button 
-                        onClick={() => handlePendingAction(msg.pendingAction.id, 'confirm')}
+                        onClick={() => handlePendingAction(pendingAction.id, 'confirm')}
                         style={{ padding: '6px 12px', background: 'var(--c-green)', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
                       >
                         Confirm
                       </button>
                       <button 
-                        onClick={() => handlePendingAction(msg.pendingAction.id, 'cancel')}
+                        onClick={() => handlePendingAction(pendingAction.id, 'cancel')}
                         style={{ padding: '6px 12px', background: 'var(--border-color)', color: 'var(--text-primary)', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
                       >
                         Cancel
@@ -391,7 +427,7 @@ const AgenticAiSlider: React.FC<AgenticAiSliderProps> = ({ onActionConfirmed }) 
                 )}
               </div>
             </div>
-          ))}
+          )})}
           {isAiTyping && (
             <div className="chat-message ai">
               <div className="chat-bubble typing-indicator">

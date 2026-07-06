@@ -1,122 +1,216 @@
-import React, { useState } from 'react';
-import { Calendar, CheckCircle2, Circle, Trash2, Edit2, X, Check } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { AlarmClock, Calendar, Check, CheckCircle2, ChevronDown, ChevronRight, Circle, Edit2, Folder, Tag, Trash2, X } from 'lucide-react';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import Checklist from '../Checklist/Checklist';
+import type { Label, Project, Todo, TodoPayload, TodoPriority, TodoStatus } from '../../types/todo';
 import './TaskList.css';
-
-export interface Todo {
-  id: string;
-  title: string;
-  description?: string;
-  deadline?: string;
-  completed: boolean;
-}
 
 interface TaskListProps {
   todos: Todo[];
+  projects: Project[];
+  labels: Label[];
+  todoLabels: Record<string, string[]>;
   isLoading: boolean;
-  currentView: 'today' | 'upcoming';
-  onDelete?: (id: string) => void;
-  onUpdate?: (id: string, updates: Partial<Todo>) => void;
+  onDelete: (id: string) => Promise<void>;
+  onUpdate: (id: string, updates: TodoPayload) => Promise<void>;
+  onAttachLabel: (todoId: string, labelId: string) => Promise<void>;
+  onDetachLabel: (todoId: string, labelId: string) => Promise<void>;
+  onChecklistChanged: () => void;
 }
 
-const TaskList: React.FC<TaskListProps> = ({ todos, isLoading, currentView, onDelete, onUpdate }) => {
+const formatDate = (value?: string | null) => {
+  if (!value) return '';
+  return new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+};
+
+const toInputDate = (value?: string | null) => {
+  if (!value) return null;
+  return value; // We will use ISO string directly with DatePicker
+};
+
+const badgeText = (value: string) => value.replace('_', ' ');
+
+const TaskList: React.FC<TaskListProps> = ({
+  todos,
+  projects,
+  labels,
+  todoLabels,
+  isLoading,
+  onDelete,
+  onUpdate,
+  onAttachLabel,
+  onDetachLabel,
+  onChecklistChanged,
+}) => {
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editTitle, setEditTitle] = useState('');
-  const [editDesc, setEditDesc] = useState('');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<TodoPayload>({});
+
+  const projectById = useMemo(() => new Map(projects.map(project => [project.id, project])), [projects]);
+  const labelById = useMemo(() => new Map(labels.map(label => [label.id, label])), [labels]);
 
   const handleEditStart = (todo: Todo) => {
     setEditingId(todo.id);
-    setEditTitle(todo.title);
-    setEditDesc(todo.description || '');
+    setEditDraft({
+      title: todo.title,
+      description: todo.description || '',
+      due_at: toInputDate(todo.due_at),
+      reminder_at: toInputDate(todo.reminder_at),
+      status: todo.status,
+      priority: todo.priority,
+      project_id: todo.project_id || '',
+    });
   };
 
-  const handleEditSave = (id: string) => {
-    if (onUpdate) {
-      onUpdate(id, { title: editTitle, description: editDesc });
-    }
+  const handleEditSave = async (id: string) => {
+    await onUpdate(id, {
+      ...editDraft,
+      title: String(editDraft.title || '').trim(),
+      description: editDraft.description ? String(editDraft.description) : null,
+      due_at: editDraft.due_at ? new Date(String(editDraft.due_at)).toISOString() : null,
+      deadline: editDraft.due_at ? new Date(String(editDraft.due_at)).toISOString() : null,
+      reminder_at: editDraft.reminder_at ? new Date(String(editDraft.reminder_at)).toISOString() : null,
+      project_id: editDraft.project_id || null,
+      completed: editDraft.status === 'done',
+    });
     setEditingId(null);
   };
 
   if (isLoading) {
-    return <div style={{ padding: '10px 0', color: 'var(--text-secondary)' }}>Loading tasks...</div>;
+    return <div className="task-list-state">Loading tasks...</div>;
   }
 
-  const displayedTodos = todos.filter(todo => {
-    if (!todo.deadline) return currentView === 'today'; // Tasks with no deadline go to Today
-    
-    const date = new Date(todo.deadline);
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
-    
-    const isTodayOrEarlier = date <= today;
-    return currentView === 'today' ? isTodayOrEarlier : !isTodayOrEarlier;
-  });
-
-  if (displayedTodos.length === 0) {
-    return <div style={{ padding: '10px 0', color: 'var(--text-secondary)' }}>No tasks for {currentView}. Add one above!</div>;
+  if (todos.length === 0) {
+    return <div className="task-list-state">No tasks match this view.</div>;
   }
 
   return (
-    <>
-      {displayedTodos.map(todo => (
-        <div className="task-item" key={todo.id}>
-          {todo.completed ? (
-            <CheckCircle2 size={20} className="task-checkbox text-green" onClick={() => onUpdate && onUpdate(todo.id, { completed: false })} />
-          ) : (
-            <Circle size={20} className="task-checkbox" onClick={() => onUpdate && onUpdate(todo.id, { completed: true })} />
-          )}
-          
-          <div className="task-details" style={{ flex: 1 }}>
-            {editingId === todo.id ? (
-              <div className="edit-form" style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
-                <input 
-                  type="text" 
-                  value={editTitle} 
-                  onChange={(e) => setEditTitle(e.target.value)} 
-                  className="edit-input" 
-                  style={{ width: '100%', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-primary)' }}
-                />
-                <input 
-                  type="text" 
-                  value={editDesc} 
-                  onChange={(e) => setEditDesc(e.target.value)} 
-                  className="edit-input" 
-                  placeholder="Description..."
-                  style={{ width: '100%', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-primary)', fontSize: '12px' }}
-                />
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={() => handleEditSave(todo.id)} style={{ padding: '4px 8px', background: 'var(--text-green)', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}><Check size={14}/> Save</button>
-                  <button onClick={() => setEditingId(null)} style={{ padding: '4px 8px', background: 'var(--border-color)', color: 'var(--text-primary)', border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}><X size={14}/> Cancel</button>
+    <div className="task-list">
+      {todos.map(todo => {
+        const isDone = todo.completed || todo.status === 'done';
+        const assignedLabelIds = todoLabels[todo.id] || [];
+        const assignedLabels = assignedLabelIds.map(id => labelById.get(id)).filter(Boolean) as Label[];
+        const progress = Math.round((todo.checklist_progress || 0) * 100);
+        const isEditing = editingId === todo.id;
+
+        return (
+          <div className="task-item" key={todo.id}>
+            <button className="task-checkbox" onClick={() => onUpdate(todo.id, { completed: !isDone })} title={isDone ? 'Mark incomplete' : 'Mark complete'}>
+              {isDone ? <CheckCircle2 size={20} className="text-green" /> : <Circle size={20} />}
+            </button>
+
+            <div className="task-details">
+              {isEditing ? (
+                <div className="edit-form">
+                  <input
+                    type="text"
+                    value={String(editDraft.title || '')}
+                    onChange={(event) => setEditDraft(prev => ({ ...prev, title: event.target.value }))}
+                    className="edit-input task-edit-title"
+                  />
+                  <textarea
+                    value={String(editDraft.description || '')}
+                    onChange={(event) => setEditDraft(prev => ({ ...prev, description: event.target.value }))}
+                    className="edit-input"
+                    placeholder="Description"
+                    rows={2}
+                  />
+                  <div className="edit-grid">
+                    <label>Due
+                      <DatePicker 
+                        selected={editDraft.due_at ? new Date(String(editDraft.due_at)) : null} 
+                        onChange={(date: Date | null) => setEditDraft(prev => ({ ...prev, due_at: date ? date.toISOString() : null }))} 
+                        showTimeSelect 
+                        dateFormat="MMM d, yyyy h:mm aa" 
+                        className="date-picker-input edit-input"
+                        isClearable
+                      />
+                    </label>
+                    <label>Reminder
+                      <DatePicker 
+                        selected={editDraft.reminder_at ? new Date(String(editDraft.reminder_at)) : null} 
+                        onChange={(date: Date | null) => setEditDraft(prev => ({ ...prev, reminder_at: date ? date.toISOString() : null }))} 
+                        showTimeSelect 
+                        dateFormat="MMM d, yyyy h:mm aa" 
+                        className="date-picker-input edit-input"
+                        isClearable
+                      />
+                    </label>
+                    <label>Status<select value={editDraft.status as TodoStatus} onChange={(event) => setEditDraft(prev => ({ ...prev, status: event.target.value as TodoStatus }))}>
+                      <option value="todo">Todo</option>
+                      <option value="in_progress">In progress</option>
+                      <option value="done">Done</option>
+                      <option value="archived">Archived</option>
+                    </select></label>
+                    <label>Priority<select value={editDraft.priority as TodoPriority} onChange={(event) => setEditDraft(prev => ({ ...prev, priority: event.target.value as TodoPriority }))}>
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="urgent">Urgent</option>
+                    </select></label>
+                    <label>Project<select value={String(editDraft.project_id || '')} onChange={(event) => setEditDraft(prev => ({ ...prev, project_id: event.target.value }))}>
+                      <option value="">Inbox</option>
+                      {projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}
+                    </select></label>
+                  </div>
+                  <div className="edit-actions">
+                    <button className="save-btn" onClick={() => handleEditSave(todo.id)}><Check size={14} /> Save</button>
+                    <button className="cancel-btn" onClick={() => setEditingId(null)}><X size={14} /> Cancel</button>
+                  </div>
                 </div>
+              ) : (
+                <>
+                  <div className="task-title-row">
+                    <span className={`task-title ${isDone ? 'completed' : ''}`}>{todo.title}</span>
+                    <span className={`status-badge status-${todo.status}`}>{badgeText(todo.status)}</span>
+                    <span className={`priority-badge priority-${todo.priority}`}>{todo.priority}</span>
+                  </div>
+                  {todo.description && <span className="task-description">{todo.description}</span>}
+                  <div className="task-meta">
+                    {(todo.due_at || todo.deadline) && <span className="task-time text-green"><Calendar size={14} /> {formatDate(todo.due_at || todo.deadline)}</span>}
+                    {todo.reminder_at && <span className="task-time text-orange"><AlarmClock size={14} /> {formatDate(todo.reminder_at)}</span>}
+                    {todo.project_id && projectById.get(todo.project_id) && <span className="task-time"><Folder size={14} /> {projectById.get(todo.project_id)?.name}</span>}
+                  </div>
+                  <div className="task-label-row">
+                    {assignedLabels.map(label => (
+                      <button key={label.id} className="task-label-chip" onClick={() => onDetachLabel(todo.id, label.id)} title="Detach label">
+                        <Tag size={12} style={{ color: label.color || 'var(--c-purple)' }} />
+                        {label.name}
+                      </button>
+                    ))}
+                    {labels.filter(label => !assignedLabelIds.includes(label.id)).slice(0, 4).map(label => (
+                      <button key={label.id} className="task-label-chip muted" onClick={() => onAttachLabel(todo.id, label.id)} title="Attach label">
+                        <Tag size={12} style={{ color: label.color || 'var(--c-purple)' }} />
+                        {label.name}
+                      </button>
+                    ))}
+                  </div>
+                  {todo.checklist_progress !== undefined && (
+                    <div className="progress-line" title={`Checklist ${progress}%`}>
+                      <span style={{ width: `${progress}%` }} />
+                    </div>
+                  )}
+                  {expandedId === todo.id && <Checklist todoId={todo.id} onChanged={onChecklistChanged} />}
+                </>
+              )}
+            </div>
+
+            {!isEditing && (
+              <div className="task-actions">
+                <button onClick={() => setExpandedId(expandedId === todo.id ? null : todo.id)} title="Checklist">
+                  {expandedId === todo.id ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                </button>
+                <button onClick={() => handleEditStart(todo)} title="Edit task"><Edit2 size={16} /></button>
+                <button onClick={() => onDelete(todo.id)} title="Delete task"><Trash2 size={16} /></button>
               </div>
-            ) : (
-              <>
-                <span className="task-title" style={{ textDecoration: todo.completed ? 'line-through' : 'none', color: todo.completed ? 'var(--text-secondary)' : 'var(--text-primary)' }}>
-                  {todo.title}
-                </span>
-                {todo.deadline && (
-                  <span className="task-time text-green">
-                    <Calendar size={14} /> {new Date(todo.deadline).toLocaleString()}
-                  </span>
-                )}
-                {todo.description && (
-                  <span className="task-time" style={{ color: 'var(--text-secondary)' }}>
-                    {todo.description}
-                  </span>
-                )}
-              </>
             )}
           </div>
-          
-          {editingId !== todo.id && (
-            <div className="task-actions" style={{ display: 'flex', gap: '8px', opacity: 0.6 }}>
-              <Edit2 size={16} className="action-btn" style={{ cursor: 'pointer' }} onClick={() => handleEditStart(todo)} />
-              <Trash2 size={16} className="action-btn text-red" style={{ cursor: 'pointer' }} onClick={() => onDelete && onDelete(todo.id)} />
-            </div>
-          )}
-        </div>
-      ))}
-    </>
+        );
+      })}
+    </div>
   );
 };
 
+export type { Todo };
 export default TaskList;

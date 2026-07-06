@@ -1,6 +1,10 @@
 
+export const API_BASE_URL = 'http://127.0.0.1:8000';
+
+export const apiUrl = (path: string) => `${API_BASE_URL}${path}`;
+
 export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
-  let token = localStorage.getItem('access_token');
+  const token = localStorage.getItem('access_token');
 
   // Setup headers with the access token
   const headers = {
@@ -14,7 +18,7 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
     // If the token is expired or unauthorized
     if (response.status === 401) {
       // Try to refresh the token using the HTTP-only cookie
-      const refreshResponse = await fetch('http://127.0.0.1:8000/users/refresh', {
+      const refreshResponse = await fetch(apiUrl('/users/refresh'), {
         method: 'POST',
         credentials: 'include', // Important: sends the refresh_token cookie
       });

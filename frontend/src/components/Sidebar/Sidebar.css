@@ -9,6 +9,24 @@
   border-right: 1px solid var(--border-color);
 }
 
+/* Custom Dark Scrollbar for Sidebar */
+.sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background-color: #555;
+  border-radius: 4px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background-color: #333;
+}
+
 .sidebar-header {
   display: flex;
   justify-content: space-between;
@@ -72,6 +90,13 @@
   transition: background-color 0.2s;
 }
 
+.nav-item span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .nav-item:hover {
   background-color: var(--hover-bg);
 }
@@ -109,5 +134,93 @@
   color: var(--text-primary);
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
+}
+
+.search-item {
+  padding: 8px 12px;
+}
+
+.search-item input,
+.inline-create input,
+.inline-edit-input {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  outline: none;
+  min-width: 0;
+  width: 100%;
+  font: inherit;
+}
+
+.search-item input {
+  margin-left: 0;
+}
+
+.inline-create {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 8px 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+}
+
+.label-create input[type="color"] {
+  width: 24px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+}
+
+.mini-icon-btn,
+.row-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.mini-icon-btn:hover,
+.row-actions button:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.editable-item {
+  position: relative;
+  padding-right: 52px;
+}
+
+.editable-item .row-actions {
+  position: absolute;
+  right: 6px;
+  display: none;
+  gap: 2px;
+}
+
+.editable-item:hover .row-actions {
+  display: flex;
+}
+
+.inline-edit-input {
+  padding: 2px 0;
+}
+
+@media (max-width: 760px) {
+  .sidebar {
+    width: 100%;
+    max-height: 45vh;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+  }
 }

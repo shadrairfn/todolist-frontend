@@ -33,8 +33,8 @@ const Login: React.FC = () => {
         localStorage.setItem('access_token', data.access_token);
         navigate('/');
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }

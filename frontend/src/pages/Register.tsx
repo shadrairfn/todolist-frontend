@@ -30,8 +30,8 @@ const Register: React.FC = () => {
 
       alert('Registrasi berhasil! Silakan Sign In.');
       // window.location.href = '/login'; 
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
