@@ -14,6 +14,22 @@ const PRIORITY_COLORS: Record<string, string> = {
   urgent: '#db4c3f',
 };
 
+type CalendarEvent = Todo & {
+  start: Date;
+  end: Date;
+};
+
+type CalendarEventLayout = {
+  todo: CalendarEvent;
+  sIdx: number;
+  eIdx: number;
+  length: number;
+  isContinuesLeft: boolean;
+  isContinuesRight: boolean;
+};
+
+type CalendarEventLayoutWithSlot = CalendarEventLayout & { slot: number };
+
 // Helper to get local date at midnight
 const toLocalDate = (dateStr: string) => {
   const d = new Date(dateStr);
@@ -51,7 +67,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ todos }) => {
     }
 
     const days: Date[] = [];
-    let d = new Date(startDate);
+    const d = new Date(startDate);
     while (d <= endDate) {
       days.push(new Date(d));
       d.setDate(d.getDate() + 1);
@@ -115,8 +131,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ todos }) => {
             mappedEvents.sort((a, b) => a.sIdx - b.sIdx || b.length - a.length);
 
             // Pack slots
-            const slots: (any | null)[][] = Array.from({ length: 7 }, () => []);
-            const eventLayouts: any[] = [];
+            const slots: (CalendarEventLayout | undefined)[][] = Array.from({ length: 7 }, () => []);
+            const eventLayouts: CalendarEventLayoutWithSlot[] = [];
             
             mappedEvents.forEach(evt => {
                let s = 0;

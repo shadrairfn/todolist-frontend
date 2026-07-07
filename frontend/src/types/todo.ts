@@ -29,6 +29,7 @@ export interface Todo {
   description?: string | null;
   start_at?: string | null;
   due_at?: string | null;
+  deadline?: string | null;
   reminder_at?: string | null;
   completed: boolean;
   status: TodoStatus;

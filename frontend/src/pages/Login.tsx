@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { apiUrl } from '../utils/api';
 import './Login.css';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
-  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -16,16 +17,16 @@ const Login: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/users/login', {
+      const response = await fetch(apiUrl('/users/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, password }),
+        body: JSON.stringify({ name: username, password }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Login failed. Please check your credentials.');
+        throw new Error(data.message || data.detail || 'Login failed. Please check your credentials.');
       }
 
       // Simpan Access Token ke localStorage
@@ -51,13 +52,13 @@ const Login: React.FC = () => {
         <form className="login-form" onSubmit={handleSubmit}>
           {error && <div style={{ color: '#ff4d4f', fontSize: '0.9rem', textAlign: 'center' }}>{error}</div>}
           <div className="input-group">
-            <label htmlFor="name">Username </label>
+            <label htmlFor="username">Username</label>
             <input 
-              type="name" 
-              id="name" 
+              type="text" 
+              id="username" 
               placeholder="Enter your username" 
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               required 
             />
           </div>

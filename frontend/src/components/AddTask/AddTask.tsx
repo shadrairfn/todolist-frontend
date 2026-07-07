@@ -14,6 +14,11 @@ interface AddTaskProps {
 
 const recurrenceOptions = ['none', 'daily', 'weekly', 'monthly', 'yearly'] as const;
 
+const toLocalISOString = (date: Date) => {
+  const tzOffset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - tzOffset).toISOString().slice(0, -1);
+};
+
 const AddTask: React.FC<AddTaskProps> = ({ projects, labels, isSubmitting, onAddTask }) => {
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [title, setTitle] = useState('');
@@ -52,15 +57,15 @@ const AddTask: React.FC<AddTaskProps> = ({ projects, labels, isSubmitting, onAdd
   };
 
   const handleSubmit = async () => {
-    if (!title.trim()) return;
+    if (!title.trim() || !startAt || !dueAt) return;
 
     await onAddTask(
       {
         title: title.trim(),
         description: description.trim() || null,
-        start_at: startAt ? startAt.toISOString() : null,
-        due_at: dueAt ? dueAt.toISOString() : null,
-        reminder_at: reminderAt ? reminderAt.toISOString() : null,
+        start_at: startAt ? toLocalISOString(startAt) : null,
+        due_at: dueAt ? toLocalISOString(dueAt) : null,
+        reminder_at: reminderAt ? toLocalISOString(reminderAt) : null,
         priority,
         status,
         project_id: projectId || null,
@@ -222,7 +227,7 @@ const AddTask: React.FC<AddTaskProps> = ({ projects, labels, isSubmitting, onAdd
         >
           Cancel
         </button>
-        <button className="btn-submit" onClick={handleSubmit} disabled={!title.trim() || isSubmitting}>
+        <button className="btn-submit" onClick={handleSubmit} disabled={!title.trim() || !startAt || !dueAt || isSubmitting}>
           {isSubmitting ? 'Adding...' : 'Add task'}
         </button>
       </div>

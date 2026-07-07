@@ -5,11 +5,12 @@ import {
   Calendar,
   CalendarClock,
   CalendarDays,
+  CheckCircle2,
   Edit2,
   Folder,
   Hash,
   Inbox,
-  PanelLeftClose,
+  LogOut,
   Plus,
   PlusCircle,
   Search,
@@ -17,16 +18,20 @@ import {
   Trash2,
 } from 'lucide-react';
 import type { Label, Project, TodoFilters, TodoStatus } from '../../types/todo';
+import type { User } from '../../types/user';
 import './Sidebar.css';
 
-type View = 'inbox' | 'today' | 'upcoming' | 'calendar' | 'filters' | 'project' | 'label';
+type View = 'inbox' | 'today' | 'upcoming' | 'calendar' | 'filters' | 'project' | 'label' | 'profile';
 
 interface SidebarProps {
   currentView: View;
   filters: TodoFilters;
+  currentUser: User | null;
   projects: Project[];
   labels: Label[];
   onViewChange: (view: View, filters?: TodoFilters) => void;
+  onProfileClick: () => void;
+  onLogout: () => void;
   onSearch: (query: string) => void;
   onAddTaskClick: () => void;
   onCreateProject: (name: string) => Promise<void>;
@@ -42,9 +47,12 @@ const labelColors = ['#db4c3f', '#eb8909', '#fad000', '#246fe0', '#9c27b0', '#05
 const Sidebar: React.FC<SidebarProps> = ({
   currentView,
   filters,
+  currentUser,
   projects,
   labels,
   onViewChange,
+  onProfileClick,
+  onLogout,
   onSearch,
   onAddTaskClick,
   onCreateProject,
@@ -59,6 +67,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [newLabelColor, setNewLabelColor] = useState(labelColors[3]);
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
+  const profileName = currentUser?.name || currentUser?.email || 'Profile';
 
   const submitProject = async () => {
     if (!newProject.trim()) return;
@@ -72,27 +81,45 @@ const Sidebar: React.FC<SidebarProps> = ({
     setNewLabel('');
   };
 
-  const quickFilter = (label: string, status?: TodoStatus, flags?: TodoFilters) => (
+  const quickFilter = (label: string, status?: TodoStatus, flags: TodoFilters = {}) => {
+    const isActive = status
+      ? filters.status === status
+      : Object.entries(flags).every(([key, value]) => filters[key as keyof TodoFilters] === value);
+
+    return (
     <div
-      className={`nav-item ${filters.status === status && !!status ? 'active' : ''}`}
+      className={`nav-item ${isActive ? 'active' : ''}`}
       onClick={() => onViewChange('filters', { status, ...flags })}
     >
-      {label === 'Overdue' ? <CalendarClock size={18} className="nav-icon text-red" /> : label === 'Archived' ? <Archive size={18} className="nav-icon" /> : <SlidersHorizontal size={18} className="nav-icon text-blue" />}
+      {label === 'Overdue' ? <CalendarClock size={18} className="nav-icon text-red" /> : label === 'Archived' ? <Archive size={18} className="nav-icon" /> : label === 'Done' ? <CheckCircle2 size={18} className="nav-icon text-green" /> : <SlidersHorizontal size={18} className="nav-icon text-blue" />}
       <span>{label}</span>
     </div>
-  );
+    );
+  };
 
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
-        <div className="user-profile">
-          <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Denise" alt="User" className="user-avatar" />
-          <span className="user-name">Denise</span>
-          <span className="chevron-down">v</span>
+        <div
+          className={`user-profile ${currentView === 'profile' ? 'active' : ''}`}
+          onClick={onProfileClick}
+          role="button"
+          tabIndex={0}
+          title="Open profile"
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') onProfileClick();
+          }}
+        >
+          <img
+            src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(profileName)}`}
+            alt=""
+            className="user-avatar"
+          />
+          <span className="user-name">{profileName}</span>
         </div>
         <div className="header-actions">
           <Bell size={18} className="action-icon" />
-          <PanelLeftClose size={18} className="action-icon" />
+          <LogOut size={18} className="action-icon" onClick={onLogout} role="button" aria-label="Logout" />
         </div>
       </div>
 
@@ -126,8 +153,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           <span>Filters & Labels</span>
         </div>
         {quickFilter('Overdue', undefined, { overdue: true })}
-        {quickFilter('Due Today', undefined, { due_today: true })}
         {quickFilter('In Progress', 'in_progress')}
+        {quickFilter('Done', 'done')}
         {quickFilter('Archived', 'archived')}
       </nav>
 

@@ -80,6 +80,26 @@
   gap: 4px;
 }
 
+.task-time.time-start {
+  color: var(--c-blue);
+}
+
+.task-time.time-due {
+  color: var(--c-green);
+}
+
+.task-time.time-warning {
+  color: var(--c-orange);
+}
+
+.task-time.time-running {
+  color: var(--c-yellow);
+}
+
+.task-time.time-elapsed {
+  color: var(--c-red);
+}
+
 .status-badge,
 .priority-badge,
 .task-label-chip {

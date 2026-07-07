@@ -3,14 +3,17 @@ import Sidebar from '../components/Sidebar/Sidebar';
 import TaskList from '../components/TaskList/TaskList';
 import AddTask from '../components/AddTask/AddTask';
 import AgenticAiSlider from '../components/AgenticAiSlider/AgenticAiSlider';
+import UserManagement from '../components/UserManagement/UserManagement';
 import { labelsApi } from '../services/labelsApi';
 import { projectsApi } from '../services/projectsApi';
 import { todosApi } from '../services/todosApi';
+import { usersApi } from '../services/usersApi';
 import type { Label, Project, Todo, TodoFilters, TodoPayload } from '../types/todo';
+import type { User, UserPayload } from '../types/user';
 import CalendarView from '../components/CalendarView/CalendarView';
 import './Dashboard.css';
 
-type View = 'inbox' | 'today' | 'upcoming' | 'calendar' | 'filters' | 'project' | 'label';
+type View = 'inbox' | 'today' | 'upcoming' | 'calendar' | 'filters' | 'project' | 'label' | 'profile';
 
 const viewTitles: Record<View, string> = {
   inbox: 'Inbox',
@@ -20,28 +23,57 @@ const viewTitles: Record<View, string> = {
   filters: 'Filters',
   project: 'Project',
   label: 'Label',
+  profile: 'Profile',
 };
+
+const hasStarted = (todo: Todo, nowMs: number) => {
+  if (!todo.start_at) return false;
+  const startMs = new Date(todo.start_at).getTime();
+  return !Number.isNaN(startMs) && nowMs >= startMs;
+};
+
+const isDerivedInProgress = (todo: Todo, nowMs: number) => {
+  if (todo.completed || todo.status === 'done' || todo.status === 'archived') return false;
+  return todo.status === 'in_progress' || hasStarted(todo, nowMs);
+};
+
+const getTodoApiFilters = (filters: TodoFilters) => {
+  if (filters.status !== 'in_progress') return filters;
+  return { ...filters, status: undefined };
+};
+
+const formatStatusTitle = (status: string) => status.split('_').map(word => word[0].toUpperCase() + word.slice(1)).join(' ');
 
 const Dashboard: React.FC = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [labels, setLabels] = useState<Label[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [todoLabels, setTodoLabels] = useState<Record<string, string[]>>({});
   const [filters, setFilters] = useState<TodoFilters>({ due_today: true });
   const [currentView, setCurrentView] = useState<View>('today');
   const [isLoading, setIsLoading] = useState(true);
+  const [isProfileLoading, setIsProfileLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [profileError, setProfileError] = useState('');
+  const [profileSuccess, setProfileSuccess] = useState('');
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   const title = useMemo(() => {
     if (filters.project_id) return projects.find(project => project.id === filters.project_id)?.name || 'Project';
     if (filters.label_id) return labels.find(label => label.id === filters.label_id)?.name || 'Label';
     if (filters.overdue) return 'Overdue';
     if (filters.due_today) return 'Due Today';
-    if (filters.status) return filters.status.replace('_', ' ');
+    if (filters.status) return formatStatusTitle(filters.status);
     if (filters.priority) return `${filters.priority} priority`;
     if (filters.q) return `Search: ${filters.q}`;
     return viewTitles[currentView];
   }, [currentView, filters, labels, projects]);
+
+  const visibleTodos = useMemo(() => {
+    if (filters.status !== 'in_progress') return todos;
+    return todos.filter(todo => isDerivedInProgress(todo, nowMs));
+  }, [filters.status, nowMs, todos]);
 
   const loadTodoLabels = useCallback(async (knownLabels: Label[]) => {
     if (knownLabels.length === 0) {
@@ -76,7 +108,7 @@ const Dashboard: React.FC = () => {
   const loadTodos = useCallback(async (nextFilters: TodoFilters = filters) => {
     setIsLoading(true);
     try {
-      const data = await todosApi.list(nextFilters);
+      const data = await todosApi.list(getTodoApiFilters(nextFilters));
       setTodos(data);
     } catch (error) {
       console.error('Error fetching todos:', error);
@@ -85,11 +117,26 @@ const Dashboard: React.FC = () => {
     }
   }, [filters]);
 
+  const loadCurrentUser = useCallback(async () => {
+    setIsProfileLoading(true);
+    setProfileError('');
+    try {
+      const data = await usersApi.me();
+      setCurrentUser(data);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to load profile.';
+      setProfileError(message);
+      console.error('Error fetching profile:', error);
+    } finally {
+      setIsProfileLoading(false);
+    }
+  }, []);
+
   const refreshAll = useCallback(async () => {
     setIsLoading(true);
     try {
       const { labelData } = await loadReferenceData();
-      const data = await todosApi.list(filters);
+      const data = await todosApi.list(getTodoApiFilters(filters));
       setTodos(data);
       await loadTodoLabels(labelData);
     } catch (error) {
@@ -104,8 +151,23 @@ const Dashboard: React.FC = () => {
   }, [loadReferenceData]);
 
   useEffect(() => {
+    Promise.resolve().then(() => loadCurrentUser());
+  }, [loadCurrentUser]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setNowMs(Date.now()), 60000);
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  useEffect(() => {
     Promise.resolve().then(() => loadTodos(filters));
   }, [loadTodos, filters]);
+
+  useEffect(() => {
+    if (currentView === 'profile') {
+      Promise.resolve().then(() => loadCurrentUser());
+    }
+  }, [currentView, loadCurrentUser]);
 
   const handleViewChange = (view: View, nextFilters: TodoFilters = {}) => {
     setCurrentView(view);
@@ -199,14 +261,49 @@ const Dashboard: React.FC = () => {
     await refreshAll();
   };
 
+  const handleUpdateProfile = async (payload: UserPayload) => {
+    setProfileError('');
+    setProfileSuccess('');
+    try {
+      const updated = await usersApi.updateMe(payload);
+      setCurrentUser(updated);
+      setProfileSuccess('Profile updated.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to update profile.';
+      setProfileError(message);
+      throw error;
+    }
+  };
+
+  const handleChangePassword = async (payload: { current_password: string; new_password: string }) => {
+    setProfileError('');
+    setProfileSuccess('');
+    try {
+      await usersApi.changePassword(payload);
+      setProfileSuccess('Password updated.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to change password.';
+      setProfileError(message);
+      throw error;
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('access_token');
+    window.location.href = '/login';
+  };
+
   return (
     <div className="dashboard-container">
       <Sidebar
         currentView={currentView}
         filters={filters}
+        currentUser={currentUser}
         projects={projects}
         labels={labels}
         onViewChange={handleViewChange}
+        onProfileClick={() => handleViewChange('profile', {})}
+        onLogout={handleLogout}
         onSearch={handleSearch}
         onAddTaskClick={() => window.dispatchEvent(new CustomEvent('open-add-task'))}
         onCreateProject={handleCreateProject}
@@ -223,13 +320,24 @@ const Dashboard: React.FC = () => {
         </header>
 
         <div className="task-section">
-          {currentView === 'calendar' ? (
+          {currentView === 'profile' ? (
+            <UserManagement
+              key={`${currentUser?.id || 'profile'}:${currentUser?.name || ''}:${currentUser?.email || ''}`}
+              user={currentUser}
+              isLoading={isProfileLoading}
+              error={profileError}
+              success={profileSuccess}
+              onUpdateProfile={handleUpdateProfile}
+              onChangePassword={handleChangePassword}
+              onRefresh={loadCurrentUser}
+            />
+          ) : currentView === 'calendar' ? (
             <CalendarView todos={todos} />
           ) : (
             <>
               <h2>Tasks</h2>
               <TaskList
-                todos={todos}
+                todos={visibleTodos}
                 projects={projects}
                 labels={labels}
                 todoLabels={todoLabels}

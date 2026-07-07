@@ -1,0 +1,148 @@
+.users-management {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 680px;
+}
+
+.users-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.profile-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.profile-heading img {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--hover-bg);
+  flex-shrink: 0;
+}
+
+.users-toolbar h2 {
+  border: none;
+  margin: 0;
+  padding: 0;
+  font-size: 18px;
+}
+
+.users-toolbar p {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.users-alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(219, 76, 63, 0.45);
+  border-radius: 6px;
+  color: #ff9b91;
+  background: rgba(219, 76, 63, 0.08);
+  font-size: 13px;
+}
+
+.users-alert.success {
+  border-color: rgba(5, 133, 39, 0.45);
+  color: #62d37e;
+  background: rgba(5, 133, 39, 0.08);
+}
+
+.profile-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 12px;
+  align-items: end;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.form-section-title {
+  grid-column: 1 / -1;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.profile-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.profile-form input {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  padding: 9px 10px;
+  outline: none;
+}
+
+.profile-form input:focus {
+  border-color: var(--c-red);
+}
+
+.icon-text-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  height: 38px;
+  padding: 0 12px;
+  font: inherit;
+  white-space: nowrap;
+}
+
+.icon-text-button.primary {
+  border-color: var(--c-red);
+  background: var(--c-red);
+  color: #fff;
+}
+
+.icon-text-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.icon-text-button:hover {
+  background: var(--hover-bg);
+}
+
+.icon-text-button.primary:hover {
+  background: #c93f34;
+}
+
+@media (max-width: 900px) {
+  .users-toolbar,
+  .profile-form {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+
+  .users-toolbar {
+    flex-direction: column;
+  }
+}

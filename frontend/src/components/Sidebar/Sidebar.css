@@ -41,6 +41,24 @@
   cursor: pointer;
   font-weight: 600;
   font-size: 14px;
+  min-width: 0;
+  padding: 4px 6px;
+  border-radius: 6px;
+  outline: none;
+  transition: background-color 0.2s;
+}
+
+.user-profile:hover,
+.user-profile:focus,
+.user-profile.active {
+  background-color: var(--hover-bg);
+}
+
+.user-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .user-avatar {
