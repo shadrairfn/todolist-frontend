@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { Check, KeyRound, RefreshCw, Save } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Check, KeyRound, Link2, MessageCircle, RefreshCw, RotateCcw, Save, Smartphone } from 'lucide-react';
+import { usersApi } from '../../services/usersApi';
+import { whatsappApi, type WhatsAppSessionStatus } from '../../services/whatsappApi';
 import type { User, UserPayload } from '../../types/user';
 import './UserManagement.css';
 
@@ -15,6 +17,22 @@ interface UserManagementProps {
 
 const displayName = (user: User | null) => user?.name || user?.email || 'Profile';
 
+const whatsappStatusLabel = (status: WhatsAppSessionStatus | null) => {
+  if (!status) return 'Not connected';
+  if (status.stale_connected) return 'Reconnect needed';
+  if (status.connected) return 'Connected';
+  if (status.active) return 'Starting';
+  return 'Not connected';
+};
+
+const whatsappStatusClass = (status: WhatsAppSessionStatus | null) => {
+  if (!status) return '';
+  if (status.stale_connected) return 'error';
+  if (status.connected) return 'connected';
+  if (status.active) return 'active';
+  return '';
+};
+
 const UserManagement: React.FC<UserManagementProps> = ({
   user,
   isLoading,
@@ -29,8 +47,24 @@ const UserManagement: React.FC<UserManagementProps> = ({
     email: user?.email || '',
   });
   const [passwordForm, setPasswordForm] = useState({ current_password: '', new_password: '' });
+  const [whatsappNumber, setWhatsappNumber] = useState(user?.whatsapp_number || '');
+  const [whatsappStatus, setWhatsappStatus] = useState<WhatsAppSessionStatus | null>(null);
+  const [whatsappMessage, setWhatsappMessage] = useState('');
+  const [whatsappError, setWhatsappError] = useState('');
+  const [pairingCode, setPairingCode] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
+  const [isLinkingWhatsApp, setIsLinkingWhatsApp] = useState(false);
+  const [isConnectingWhatsApp, setIsConnectingWhatsApp] = useState(false);
+  const normalizedWhatsAppNumber = whatsappNumber.replace(/[^\d]/g, '');
+
+  useEffect(() => {
+    setProfileForm({
+      name: user?.name || '',
+      email: user?.email || '',
+    });
+    setWhatsappNumber(user?.whatsapp_number || '');
+  }, [user]);
 
   const submitProfile = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -61,6 +95,69 @@ const UserManagement: React.FC<UserManagementProps> = ({
       // Parent owns the visible error message.
     } finally {
       setIsSavingPassword(false);
+    }
+  };
+
+  const refreshWhatsAppStatus = async (number = normalizedWhatsAppNumber) => {
+    if (!number) return;
+    setWhatsappError('');
+    try {
+      const status = await whatsappApi.status(number);
+      setWhatsappStatus(status);
+      if (status.connected) {
+        setPairingCode('');
+      } else if (status.pairing_code) {
+        setPairingCode(status.pairing_code);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to load WhatsApp status.';
+      setWhatsappError(message);
+    }
+  };
+
+  const linkWhatsApp = async () => {
+    if (!normalizedWhatsAppNumber) return;
+    setIsLinkingWhatsApp(true);
+    setWhatsappError('');
+    setWhatsappMessage('');
+    try {
+      const result = await usersApi.linkWhatsApp(normalizedWhatsAppNumber);
+      setWhatsappMessage(result.message || 'WhatsApp number linked.');
+      await onRefresh();
+      await refreshWhatsAppStatus(normalizedWhatsAppNumber);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to link WhatsApp number.';
+      setWhatsappError(message);
+    } finally {
+      setIsLinkingWhatsApp(false);
+    }
+  };
+
+  const connectWhatsApp = async (resetStore = false) => {
+    if (!user?.id || !normalizedWhatsAppNumber) return;
+    setIsConnectingWhatsApp(true);
+    setWhatsappError('');
+    setWhatsappMessage('');
+    setPairingCode('');
+    try {
+      const result = await whatsappApi.startSession({
+        user_id: user.id,
+        phone_number: normalizedWhatsAppNumber,
+        reset_store: resetStore,
+      });
+      if (result.error) {
+        throw new Error(result.error);
+      }
+      setWhatsappMessage(result.message || 'WhatsApp session started.');
+      if (result.pairing_code) {
+        setPairingCode(result.pairing_code);
+      }
+      await refreshWhatsAppStatus(normalizedWhatsAppNumber);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to connect WhatsApp.';
+      setWhatsappError(message);
+    } finally {
+      setIsConnectingWhatsApp(false);
     }
   };
 
@@ -147,6 +244,60 @@ const UserManagement: React.FC<UserManagementProps> = ({
           <span>Change password</span>
         </button>
       </form>
+
+      <div className="profile-form whatsapp-form">
+        <div className="form-section-title">WhatsApp</div>
+        <label>
+          <span>Phone number</span>
+          <input
+            value={whatsappNumber}
+            placeholder="6282118034442"
+            inputMode="numeric"
+            onChange={(event) => setWhatsappNumber(event.target.value)}
+          />
+        </label>
+
+        <div className="whatsapp-status-panel">
+          <div className={`status-dot ${whatsappStatusClass(whatsappStatus)}`} />
+          <div>
+            <strong>{whatsappStatusLabel(whatsappStatus)}</strong>
+            <span>{user?.whatsapp_number ? `Linked to ${user.whatsapp_number}` : 'No number linked yet'}</span>
+          </div>
+        </div>
+
+        <div className="whatsapp-actions">
+          <button className="icon-text-button" type="button" onClick={linkWhatsApp} disabled={isLinkingWhatsApp || !normalizedWhatsAppNumber}>
+            <Link2 size={16} />
+            <span>Link</span>
+          </button>
+          <button className="icon-text-button primary" type="button" onClick={() => connectWhatsApp(false)} disabled={isConnectingWhatsApp || !user?.id || !normalizedWhatsAppNumber}>
+            <MessageCircle size={16} />
+            <span>Connect</span>
+          </button>
+          <button className="icon-text-button" type="button" onClick={() => refreshWhatsAppStatus()} disabled={!normalizedWhatsAppNumber}>
+            <RefreshCw size={16} />
+            <span>Status</span>
+          </button>
+          <button className="icon-text-button danger" type="button" onClick={() => connectWhatsApp(true)} disabled={isConnectingWhatsApp || !user?.id || !normalizedWhatsAppNumber}>
+            <RotateCcw size={16} />
+            <span>Reset</span>
+          </button>
+        </div>
+
+        {pairingCode && (
+          <div className="pairing-code">
+            <Smartphone size={16} />
+            <span>{pairingCode}</span>
+          </div>
+        )}
+        {whatsappMessage && (
+          <div className="users-alert success whatsapp-alert">
+            <Check size={15} />
+            <span>{whatsappMessage}</span>
+          </div>
+        )}
+        {whatsappError && <div className="users-alert whatsapp-alert">{whatsappError}</div>}
+      </div>
     </section>
   );
 };

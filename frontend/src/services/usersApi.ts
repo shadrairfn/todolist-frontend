@@ -43,4 +43,13 @@ export const usersApi = {
     });
     return parseJson<{ message: string }>(response);
   },
+
+  async linkWhatsApp(whatsappNumber: string) {
+    const response = await fetchWithAuth(apiUrl('/users/link-whatsapp'), {
+      method: 'POST',
+      headers: jsonHeaders,
+      body: JSON.stringify({ whatsapp_number: whatsappNumber }),
+    });
+    return parseJson<{ status: string; message: string }>(response);
+  },
 };
